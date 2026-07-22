@@ -82,9 +82,9 @@ public class AuthController {
      */
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(
-            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken, @RequestHeader(name = "X-Correlation-ID") String userId) {
+            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
 
-        log.info("Refresh attempt for email={}", userId);
+        log.info("Refresh token attempt");
 
         if (refreshToken == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
