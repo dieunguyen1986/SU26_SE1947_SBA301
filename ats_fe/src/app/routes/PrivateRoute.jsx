@@ -1,19 +1,25 @@
 import { useContext } from "react";
 import { AuthContext} from "@/app/providers/AuthProvider.jsx";
-import { Navigate } from "react-router-dom";
-import { useLocation } from "react-router-dom";
-import { Outlet } from "react-router-dom";
+import { Navigate, useLocation, Outlet } from "react-router-dom";
+import { Spinner } from "react-bootstrap";
 
 const PrivateRoute = ({ allowedRoles }) => {
-  // Logic to check if the user has the required roles can be implemented here
-  const { user } = useContext(AuthContext); // Assuming you have a useAuth hook to get the current user
+  const { user, loading } = useContext(AuthContext);
   const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100">
+        <Spinner animation="border" variant="primary" />
+      </div>
+    );
+  }
 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />; // Redirect to login if not authenticated
   }
 
-  const roles = user.roles || []; // [CANDIDATE] Assuming user object has a roles property
+  const roles = user.roles || []; // Assuming user object has a roles property
   const hasAccess = allowedRoles.some((role) => roles.includes(role));
 
   console.log("PrivateRoute: user roles:", roles);

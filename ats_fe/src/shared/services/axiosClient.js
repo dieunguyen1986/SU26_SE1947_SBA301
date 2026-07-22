@@ -24,44 +24,60 @@ axiosClient.interceptors.request.use(
   },
 );
 
-// Response interceptor: runs after every reply arrives
+// Response interceptor: xử lý khi nhận response lỗi
 axiosClient.interceptors.response.use(
   function (response) {
-    return response; // pass a good response straight through
+    return response; // Response thành công → trả về bình thường
   },
   async function (error) {
     const originalConfig = error.config;
 
+    // Log lỗi ra console để debug
     if (error.response) {
       console.log("Error response:", error.response.status, originalConfig.url);
     }
 
-    // originalConfig.url !== "/api/v1/auths/refresh"
+    // ===== LOGIC REFRESH TOKEN =====
+    // Điều kiện refresh:
+    // 1. Server trả 401 (Unauthorized) → accessToken hết hạn
+    // 2. Chưa retry lần nào (tránh lặp vô hạn)
+    // 3. QUAN TRỌNG: Không phải các URL sau:
+    //    - /refresh 401 → refreshToken hết hạn → dừng, không gọi lại (tránh loop)
+    //    - /login 401 → sai mật khẩu → không phải token hết hạn
+    const skipRefreshUrls = [
+      "/api/v1/auths/refresh",
+      "/api/v1/auths/login",
+    ];
+
     if (
       error.response &&
       error.response.status === 401 &&
-      !originalConfig._retry
+      !originalConfig._retry &&
+      !skipRefreshUrls.includes(originalConfig.url)
     ) {
       originalConfig._retry = true; // Đánh dấu đã retry
 
       try {
-        console.log("Session expired. Attempting to refresh token...");
+        console.log("AccessToken hết hạn. Đang refresh...");
 
+        // Gọi API refresh → backend đọc refreshToken từ cookie → trả về accessToken mới (cookie)
         const response = await authService.refreshToken();
         const userProfile = response.data;
 
-        // Cập nhật lại thông tin user cache nếu backend có trả về profile
+        // Cập nhật lại user trong localStorage
         if (userProfile) {
           localStorage.setItem("user", JSON.stringify(userProfile));
         }
 
-        // Thực hiện lại request ban đầu với session (cookie) mới
+        console.log("Refresh thành công! Gọi lại request ban đầu...");
+
+        // Gọi lại request ban đầu với accessToken mới (đã set trong cookie bởi backend)
         return axiosClient(originalConfig);
       } catch (_error) {
-        console.error("Refresh token failed, logging out...", _error);
-        // Nếu refresh token cũng hết hạn hoặc lỗi -> Xoá session và đẩy về login
-        localStorage.removeItem("user");
+        console.error("Refresh token thất bại → logout", _error);
 
+        // RefreshToken cũng hết hạn → xóa session, đẩy về trang login
+        localStorage.removeItem("user");
         if (window.location.pathname !== "/login") {
           window.location.href = "/login";
         }

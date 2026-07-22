@@ -207,6 +207,7 @@ const PublicJobDetailPage = () => {
               <Button
                 className="w-100 mb-2 fw-semibold"
                 style={{ backgroundColor: "#4f46e5", border: "none" }}
+                onClick={() => navigate(`/careers/job/${id}/apply`)}
               >
                 Apply Now
               </Button>
